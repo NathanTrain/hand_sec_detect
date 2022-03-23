@@ -1,9 +1,10 @@
 pip>=22.0.4
-setuptools==57.0.0
-wheel==0.36.2
+setuptools==60.10.0
+wheel==0.37.1
 opencv-contrib-python==4.5.5.64
 numpy==1.22.3
 mediapipe==0.8.9.1
 pycomm3~=1.2.6
 pyinstaller~=4.10
 PyQt5~=5.15.6
+pyserial~=3.5

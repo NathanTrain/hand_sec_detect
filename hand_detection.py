@@ -1,8 +1,4 @@
-import cv2 as cv
-import mediapipe as mp
-import time
-from plc import *
-from plc_thread import *
+from plc.plc_thread import *
 
 from PyQt5.QtCore import QThreadPool
 
