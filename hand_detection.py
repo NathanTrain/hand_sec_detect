@@ -1,8 +1,9 @@
 from plc.plc_thread import *
-
+import cv2 as cv
+import mediapipe as mp
 from PyQt5.QtCore import QThreadPool
 
-cam_externa = cv.VideoCapture(1)
+camera = cv.VideoCapture(0)
 
 mpHands = mp.solutions.hands
 hands = mpHands.Hands()
@@ -17,76 +18,92 @@ seguro_b = False
 mao_lado_a = False
 mao_lado_b = False
 
-def send_a(signal: bool):
-    worker_a = WriteWorker("Safety_SideA",  signal)
-    thread_a.start(worker_a)
-
-def send_b(signal: bool):
-    worker_b = WriteWorker("Safety_SideB",  signal)
-    thread_b.start(worker_b)
-
-def detect_hand_cam1():
+def detect_hand():
     global seguro_a, seguro_b, mao_lado_a, mao_lado_b
-    success, frame = cam_externa.read()
-    # imgRGB = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+    success, frame = camera.read()
+    if not success:
+        raise ConnectionError("Camera não conectada")
+    imgRGB = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
     frame.flags.writeable = False
-    # imgRGB.flags.writeable = False
-    results = hands.process(frame)
-
-    if results.multi_hand_landmarks and seguro_a:
-        for handCoord in results.multi_hand_landmarks:
-            for index, lm in enumerate(handCoord.landmark):
-                if lm.x >= 0.5 and not mao_lado_a:
-                    seguro_a = False
-                    mao_lado_a = True
-            if mao_lado_a:
-                worker_false_a = Worker_False("Safety_SideA")
-                thread_a.start(worker_false_a)
-                print("---- mão detectada no lado A ----")
-            mpDraw.draw_landmarks(frame, handCoord)
-    elif not results.multi_hand_landmarks and not seguro_a:
-        seguro_a = True
-        mao_lado_a = False
-        worker_true_a = Worker_True("Safety_SideA")
-        thread_a.start(worker_true_a)
-        print("Seguro B")
-
-    if results.multi_hand_landmarks and seguro_b:
-        for handCoord in results.multi_hand_landmarks:
-            for index, lm in enumerate(handCoord.landmark):
-                if lm.x <= 0.5 and not mao_lado_b:
-                    seguro_b = False
-                    mao_lado_b = True
-            if mao_lado_b:
-                worker_false_b = Worker_False("Safety_SideB")
-                thread_b.start(worker_false_b)
-                print("---- mão detectada no lado B ----")
-            mpDraw.draw_landmarks(frame, handCoord)
-    elif not results.multi_hand_landmarks and not seguro_b:
-        seguro_b = True
-        mao_lado_b = False
-        worker_true_b = Worker_True("Safety_SideB")
-        thread_b.start(worker_true_b)
-        print("Seguro A")
+    imgRGB.flags.writeable = False
+    results = hands.process(imgRGB)
 
     if results.multi_hand_landmarks:
         for handCoord in results.multi_hand_landmarks:
             mpDraw.draw_landmarks(frame, handCoord)
+            if seguro_a:
+                for lm in handCoord.landmark:
+                    if lm.x >= 0.5 and not mao_lado_a:
+                        seguro_a = False
+                        mao_lado_a = True
+                        # worker_false_a = Worker_False("Safety_SideA")
+                        # thread_a.start(worker_false_a)
+                        print("---- mão detectada no lado A ----")
+            if seguro_b:
+                for lm in handCoord.landmark:
+                    if lm.x <= 0.5 and not mao_lado_b:
+                        seguro_b = False
+                        mao_lado_b = True
+                        # worker_false_b = Worker_False("Safety_SideB")
+                        # thread_b.start(worker_false_b)
+                        print("---- mão detectada no lado B ----")
+    elif not results.multi_hand_landmarks:
+        if not seguro_a:
+            seguro_a = True
+            mao_lado_a = False
+            # worker_true_a = Worker_True("Safety_SideA")
+            # thread_a.start(worker_true_a)
+            print("Seguro A")
+        if not seguro_b:
+            seguro_b = True
+            mao_lado_b = False
+            # worker_true_b = Worker_True("Safety_SideB")
+            # thread_b.start(worker_true_b)
+            print("Seguro B")
+
+    draw_box_a(frame, seguro_a)
+    draw_box_b(frame, seguro_b)
 
     cv.imshow("Safety", frame)
-    cv.waitKey(1)
 
+def draw_box_a(frame, seguro):
+    width = int(camera.get(cv.CAP_PROP_FRAME_WIDTH))
+    height = int(camera.get(cv.CAP_PROP_FRAME_HEIGHT))
+    red = (0, 0, 255)
+    green = (0, 255, 0)
+    start_a = (int(width/2)+1
+               , 0)
+    end_a = (width, height)
 
-# worker_cam.signal_a.result.connect(lambda signal: send_a(signal))
-# worker_cam.signal_b.result.connect(lambda signal: send_b(signal))
+    if seguro:
+        cv.rectangle(frame, start_a, end_a, green, thickness=2)
+    else:
+        cv.rectangle(frame, start_a, end_a, red, thickness=2)
+
+def draw_box_b(frame, seguro):
+    width = int(camera.get(cv.CAP_PROP_FRAME_WIDTH))
+    height = int(camera.get(cv.CAP_PROP_FRAME_HEIGHT))
+    red = (0, 0, 255)
+    green = (0, 255, 0)
+    start_b = (0, 0)
+    end_b = (int(width/2)-1, height)
+
+    if seguro:
+        cv.rectangle(frame, start_b, end_b, green, thickness=2)
+    else:
+        cv.rectangle(frame, start_b, end_b, red, thickness=2)
+
 
 while True:
-    detect_hand_cam1()
-    if cv.waitKey(20) & 0xFF == ord("f"):
+    try:
+        detect_hand()
+        if cv.waitKey(20) & 0xFF == ord("f"):
+            break
+    except ConnectionError as e:
+        print(f"--- Erro de conexão: {e} ---")
         break
 
-# webcam_pc.release()
-# cam_externa.release()
-# cv.destroyAllWindows()
+camera.release()
+cv.destroyAllWindows()
 
 cv.waitKey(0)
