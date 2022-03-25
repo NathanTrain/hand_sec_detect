@@ -1,6 +1,6 @@
-from plc.plc_thread import *
 import cv2 as cv
 import mediapipe as mp
+from tests.hid_test import *
 from PyQt5.QtCore import QThreadPool
 
 camera = cv.VideoCapture(0)
@@ -9,9 +9,6 @@ mpHands = mp.solutions.hands
 hands = mpHands.Hands()
 
 mpDraw = mp.solutions.drawing_utils
-
-thread_a = QThreadPool()
-thread_b = QThreadPool()
 
 seguro_a = False
 seguro_b = False
@@ -36,29 +33,23 @@ def detect_hand():
                     if lm.x >= 0.5 and not mao_lado_a:
                         seguro_a = False
                         mao_lado_a = True
-                        # worker_false_a = Worker_False("Safety_SideA")
-                        # thread_a.start(worker_false_a)
+                        disable_relay()
                         print("---- mão detectada no lado A ----")
             if seguro_b:
                 for lm in handCoord.landmark:
                     if lm.x <= 0.5 and not mao_lado_b:
                         seguro_b = False
                         mao_lado_b = True
-                        # worker_false_b = Worker_False("Safety_SideB")
-                        # thread_b.start(worker_false_b)
                         print("---- mão detectada no lado B ----")
     elif not results.multi_hand_landmarks:
         if not seguro_a:
             seguro_a = True
             mao_lado_a = False
-            # worker_true_a = Worker_True("Safety_SideA")
-            # thread_a.start(worker_true_a)
+            enable_relay()
             print("Seguro A")
         if not seguro_b:
             seguro_b = True
             mao_lado_b = False
-            # worker_true_b = Worker_True("Safety_SideB")
-            # thread_b.start(worker_true_b)
             print("Seguro B")
 
     draw_box_a(frame, seguro_a)

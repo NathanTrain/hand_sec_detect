@@ -16,16 +16,13 @@ import time
 import serial
 
 try:
-    s = serial.Serial(port="COM4", baudrate=9600, bytesize=serial.EIGHTBITS,
+    s = serial.Serial(port="COM1", baudrate=9600, bytesize=serial.EIGHTBITS,
                       parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, timeout=None)
 
     while True:
         if s.isOpen():
-            s.write([b"\00", b"\00"])
-            time.sleep(1)
-            s.write([b"\xFF", b"\xFF"])
-            time.sleep(1)
+            print(s.read())
         else:
-            s.open()
+            raise Exception("Port not opened")
 except Exception as e:
     print(e)
