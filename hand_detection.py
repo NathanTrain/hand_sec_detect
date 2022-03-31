@@ -2,6 +2,7 @@ import cv2 as cv
 import mediapipe as mp
 from tests.hid_test import *
 from PyQt5.QtCore import QThreadPool
+import pyhid_usb_relay as relay
 
 camera = cv.VideoCapture(0)
 
@@ -85,16 +86,17 @@ def draw_box_b(frame, seguro):
         cv.rectangle(frame, start_b, end_b, red, thickness=2)
 
 
-while True:
+if __name__ == "__main__":
     try:
-        detect_hand()
-        if cv.waitKey(20) & 0xFF == ord("f"):
-            break
-    except ConnectionError as e:
-        print(f"--- Erro de conexão: {e} ---")
-        break
+        enable_relay()
+        while True:
+            detect_hand()
+            if cv.waitKey(20) & 0xFF == ord("f"):
+                break
 
-camera.release()
-cv.destroyAllWindows()
-
-cv.waitKey(0)
+        camera.release()
+        cv.destroyAllWindows()
+        cv.waitKey(0)
+    except Exception as e:
+        disable_relay()
+        print(e)
