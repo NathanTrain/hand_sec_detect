@@ -1,13 +1,14 @@
 import array
-import usb.core as core
+import usb.core
 
-device = core.find(idVendor=0x16C0, idProduct=0x05DF)
+device = usb.core.find(idVendor=0x16C0, idProduct=0x05DF)
+
 
 def set_report(data):
     global device
     try:
         if not device:
-            device = core.find(idVendor=0x16C0, idProduct=0x05DF)
+            device = usb.core.find(idVendor=0x16C0, idProduct=0x05DF)
         return device.ctrl_transfer(
             0x20,
             0x9,
@@ -18,6 +19,7 @@ def set_report(data):
         )
     except Exception as e:
         print(f"{e} - set_report - ctrl_relay.py")
+
 
 def turn_on():
     buf = array.array("B")

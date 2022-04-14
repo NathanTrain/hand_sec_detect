@@ -7,4 +7,3 @@ mediapipe==0.8.9.1
 pycomm3~=1.2.6
 pyinstaller~=4.10
 PyQt5~=5.15.6
-pyserial~=3.5

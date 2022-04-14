@@ -1,16 +1,17 @@
 import time
+import threading
 import cv2 as cv
 import mediapipe as mp
 from PyQt5.QtCore import QThreadPool
 from ctrl_relay import turn_off, turn_on
-from plc.plc_thread import Worker_ReadTags
+from plc.plc_thread import *
 
-camera = cv.VideoCapture(1)
+camera = cv.VideoCapture(0)
 
-mpHands = mp.solutions.hands
-hands = mpHands.Hands()
+mpSolutions = mp.solutions
 
-mpDraw = mp.solutions.drawing_utils
+hands = mpSolutions.hands.Hands()
+mpDraw = mpSolutions.drawing_utils
 
 seguro_a = False
 seguro_b = False
@@ -18,10 +19,12 @@ mao_lado_a = False
 mao_lado_b = False
 cutting_a = False
 cutting_b = False
+running = True
 
 
 def recebe_a(tag):
     global cutting_a
+    print(f"recebendo {tag}")
     cutting_a = tag
 
 
@@ -75,10 +78,28 @@ def detect_hand():
     else:
         turn_off()
 
+    # print(cutting_a)
+    # print(cutting_b)
+
     draw_box_a(frame, seguro_a)
     draw_box_b(frame, seguro_b)
 
+    draw_text(frame, "Pressione F para fechar a janela")
+
     cv.imshow("Safety", frame)
+
+
+def draw_text(frame, text):
+    width = int(camera.get(cv.CAP_PROP_FRAME_WIDTH))
+    height = int(camera.get(cv.CAP_PROP_FRAME_HEIGHT))
+    font = cv.QT_FONT_NORMAL
+    cv.putText(frame,
+               text,
+               (int(width/2)+40, height-15),
+               font, 0.5,
+               (255, 255, 255),
+               1,
+               cv.LINE_AA)
 
 
 def draw_box_a(frame, seguro):
@@ -109,13 +130,28 @@ def draw_box_b(frame, seguro):
         cv.rectangle(frame, start_b, end_b, red, thickness=2)
 
 
-if __name__ == "__main__":
-    worker = Worker_ReadTags()
-    worker.signal_ReadTags.side_a.connect(recebe_a)
-    worker.signal_ReadTags.side_b.connect(recebe_b)
+def read_tags_plc():
+    global running, cutting_a, cutting_b
+    while running:
+        try:
+            cortando_a, cortando_b = read_multiples(["Robo.Input.RSA", "Robo.Input.RSB"])
 
-    thread = QThreadPool()
-    thread.start(worker)
+            cutting_a = cortando_a.value
+            cutting_b = cortando_b.value
+        except Exception as e:
+            print(f'{e} - read_tags_plc')
+
+
+if __name__ == "__main__":
+    # worker = Worker_RobotCutting()
+    # worker.signal.side_a.connect(print_func)
+    # worker.signal.side_b.connect(print_func)
+    #
+    # thread = QThreadPool()
+    # thread.start(worker)
+
+    thread_plc = threading.Thread(target=read_tags_plc)
+    thread_plc.start()
 
     try:
         turn_on()
@@ -129,5 +165,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(e)
     finally:
-        worker.stop()
+        # worker.stop()
+        running = False
         turn_off()
