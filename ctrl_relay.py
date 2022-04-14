@@ -2,14 +2,14 @@ import array
 import usb.core
 
 device = usb.core.find(idVendor=0x16C0, idProduct=0x05DF)
-
+_pass = False
 
 def set_report(data):
-    global device
+    global device, _pass
     try:
         if not device:
             device = usb.core.find(idVendor=0x16C0, idProduct=0x05DF)
-        return device.ctrl_transfer(
+        ret = device.ctrl_transfer(
             0x20,
             0x9,
             (3 << 8),
@@ -17,7 +17,14 @@ def set_report(data):
             data,
             5000
         )
+        _pass = False
+        return ret
+    except AttributeError as e:
+        if not _pass:
+            print(f"{e} - set_report - ctrl_relay.py")
+            _pass = True
     except Exception as e:
+        device = None
         print(f"{e} - set_report - ctrl_relay.py")
 
 
